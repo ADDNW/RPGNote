@@ -1,0 +1,41 @@
+Główne okno:
+	CENTRUM:
+	- centralnie obszar tekstowy
+	- po lewej lista plików oznaczonych
+	PASEK:
+	- zmień okno (-> popup 1)
+	- zaznacz wiele do zakładek (-> popup 2)
+	- dodaj obecny do zakładek
+	- usuń obecny z zakładek
+	- Tryb edycji / tryb widoku
+	- (TM)
+	
+	PASEK 2 (gdy w trybie edycji):
+	- Ustaw znacznik docelowy
+	- Ustaw znacznik BN
+	- Ustaw odnośnik (-> popup 3)
+	
+	MENU:
+	- zmiana folderu
+	- zapis (ctrl-s)
+	- cofnij (ctrl-z)
+	- przywróć (ctrl-y)
+	- kopiuj (ctrl-c)
+	- wytnij (ctrl-x)
+	- wklej (ctrl-v)
+
+Okno TM:
+
+
+
+Popup 1:
+	lista pod plików z wyborem jednego
+Popup 2:
+	lista pod plików z wyborem wielu (jeśli się uda to checkboxy)
+Popup 3:
+	pole do wpisywania
+	dropdown, filtrowany po podobieństwie do pola do wpisywania
+
+
+Pomysły na V2:
+- wybór czcionki i rozmiaru
