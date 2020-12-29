@@ -12,7 +12,6 @@ Główne okno:
 	
 	PASEK 2 (gdy w trybie edycji):
 	- Ustaw znacznik docelowy
-	- Ustaw znacznik BN
 	- Ustaw odnośnik (-> popup 3)
 	
 	MENU:
@@ -37,5 +36,7 @@ Popup 3:
 	dropdown, filtrowany po podobieństwie do pola do wpisywania
 
 
-Pomysły na V2:
+Pomysły na przyszłosć:
 - wybór czcionki i rozmiaru
+- NPC jako sformatowany popup
+  - format w postaci plików zewnętrzych, opcja wyboru w menu
