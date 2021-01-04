@@ -38,6 +38,3 @@ Pomysły na przyszłosć:
 - edytor tekstu:
 	- cofnij (ctrl-z)
 	- przywróć (ctrl-y)
-	- kopiuj (ctrl-c)
-	- wytnij (ctrl-x)
-	- wklej (ctrl-v)
