@@ -17,11 +17,6 @@ Główne okno:
 	MENU:
 	- zmiana folderu
 	- zapis (ctrl-s)
-	- cofnij (ctrl-z)
-	- przywróć (ctrl-y)
-	- kopiuj (ctrl-c)
-	- wytnij (ctrl-x)
-	- wklej (ctrl-v)
 
 Okno TM:
 
@@ -39,4 +34,10 @@ Popup 3:
 Pomysły na przyszłosć:
 - wybór czcionki i rozmiaru
 - NPC jako sformatowany popup
-  - format w postaci plików zewnętrzych, opcja wyboru w menu
+  	- format w postaci plików zewnętrzych, opcja wyboru w menu
+- edytor tekstu:
+	- cofnij (ctrl-z)
+	- przywróć (ctrl-y)
+	- kopiuj (ctrl-c)
+	- wytnij (ctrl-x)
+	- wklej (ctrl-v)
