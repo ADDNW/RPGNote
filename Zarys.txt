@@ -30,6 +30,10 @@ Popup 3:
 	pole do wpisywania
 	dropdown, filtrowany po podobieństwie do pola do wpisywania
 
+Założenia znaczników:
+	cel: 	"(@`ID`){`content`}"
+	link: 	"(&`ID`){`content`}"
+	przechowywane dane: ID, plik, punkt
 
 Pomysły na przyszłosć:
 - wybór czcionki i rozmiaru
@@ -38,3 +42,4 @@ Pomysły na przyszłosć:
 - edytor tekstu:
 	- cofnij (ctrl-z)
 	- przywróć (ctrl-y)
+- znacznik modyfikowalny
