@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, ttk
-from notes_compiler import format_file, extract_filename, compile_all_notes, MARKER_TARGET_PATTERN, MARKER_ENDING, MARKER_LINK_PATTERN, MARK_LINK
+from notes_compiler import format_file, extract_filename, compile_all_notes, \
+  MARKER_TARGET_PATTERN, MARKER_ENDING, MARKER_LINK_PATTERN, MARK_LINK, MARKER_LINK_BASIC, MARKER_TARGET_BASIC
 
 
 class Note_window(tk.Tk):
@@ -14,6 +15,7 @@ class Note_window(tk.Tk):
     self.working_directory = ''
     self.current_file = ''
     self.marked_files = []
+    self.current_file_content = ''
     
     #pointers
     self.markers = None
@@ -118,8 +120,9 @@ class Note_window(tk.Tk):
       self.__read_file(path)
       
   def __save_file(self, event=None):
+    self.current_file_content = self.note_area.get(1.0, tk.END)[0:-1]
     with open(self.current_file, "w+",  encoding="UTF-8") as file:
-      file.write(self.note_area.get(1.0, tk.END))
+      file.write(self.current_file_content)
 
   #marking files
   def __mark_current_file(self):
@@ -134,21 +137,28 @@ class Note_window(tk.Tk):
 
   #markers insert
   def __add_target_marker(self):
-    pass
+    self.note_area.insert(tk.INSERT, MARKER_TARGET_BASIC)
 
   def __add_link_marker(self):
-    pass
+    self.note_area.insert(tk.INSERT, MARKER_LINK_BASIC)
 
   #appflow
   def __switch_mode(self):
     if self.write_mode:
+      #change to readonly
+      self.__save_file()
       self.write_mode = False
       self.write_panel_area.grid_remove()
+
       self.markers = compile_all_notes(self.working_directory)
+      (text, to_mark, self.current_file_pointers, _) = format_file(self.current_file_content, self.markers)
+      self.__fill_note_area(text, to_mark)
       
     else:
+      #change to editable
       self.write_mode = True
       self.write_panel_area.grid(row = 1, column = 1, sticky = tk.NSEW)
+      self.__fill_note_area(self.current_file_content)
 
   def __open_marked_file(self, event):
     w = event.widget
@@ -161,19 +171,14 @@ class Note_window(tk.Tk):
       self.note_area.tag_delete(tag)
 
     with open(file, "r", encoding="UTF-8") as file:
-      text = ''
-      to_mark = []
+      self.current_file_content = file.read()
       if self.write_mode:
-        text = file.read()
+        text = self.current_file_content
+        to_mark = None
+        target = None
       else:
-        (text, to_mark, self.current_file_pointers, target) = format_file(file.read(), self.markers, target_ID)
-      self.note_area.delete(1.0, tk.END)
-      self.note_area.insert(1.0, text)
-      if target:
-        self.note_area.mark_set(tk.INSERT, target)
-        self.note_area.see(tk.INSERT)
-      if to_mark:
-        self.__mark_text_parts(to_mark)
+        (text, to_mark, self.current_file_pointers, target) = format_file(self.current_file_content, self.markers, target_ID)
+      self.__fill_note_area(text, to_mark, target)
       
   def __mark_text_parts(self, to_mark):
     counter = 0
@@ -182,7 +187,7 @@ class Note_window(tk.Tk):
       self.note_area.tag_add(tag, start, end)
       self.note_area.tag_configure(tag, foreground="blue")
       self.note_area.tag_bind(tag, "<ButtonRelease-1>", 
-        lambda e:self.__follow_link(e, id, file)
+        lambda e, i=id, f=file: self.__follow_link(e, i, f)
       )
       
       counter += 1
@@ -196,6 +201,19 @@ class Note_window(tk.Tk):
       self.note_area.see(tk.INSERT)
     else:
       self.__read_file(target_file, target_ID)
+
+  def __fill_note_area(self, text, to_mark=None, target=None):
+    self.note_area.config(state= tk.NORMAL)
+    self.note_area.delete(1.0, tk.END)
+    self.note_area.insert(1.0, text)
+    if target:
+      self.note_area.mark_set(tk.INSERT, target)
+      self.note_area.see(tk.INSERT)
+    if to_mark:
+      self.__mark_text_parts(to_mark)
+    
+    if not self.write_mode:
+      self.note_area.config(state= tk.DISABLED)
 
   #Note_window END
 
