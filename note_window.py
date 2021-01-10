@@ -26,6 +26,9 @@ class Note_window(tk.Tk):
     self.marked_files_area = None
     self.write_panel_area = None
 
+    #TM-window
+    self.TM_window = None
+
     self.__create_GUI()
   
   #init
@@ -191,10 +194,7 @@ class Note_window(tk.Tk):
       )
       
       counter += 1
-
-  def __open_TM_window(self):
-    pass
-
+  
   def __follow_link(self, event, target_ID, target_file):
     if target_file == self.current_file:
       self.note_area.mark_set(tk.INSERT, self.current_file_pointers[target_ID])
@@ -214,6 +214,11 @@ class Note_window(tk.Tk):
     
     if not self.write_mode:
       self.note_area.config(state= tk.DISABLED)
+
+  #TM_window
+  def __open_TM_window(self):
+    pass
+
 
   #Note_window END
 
