@@ -36,6 +36,9 @@ class TM_data:
         effect = TM_effect(name, rounds_to_end, stacks, effect, remove_mode, remove_description)
         self.__objects[id].add_effect(effect)
 
+    def edit_effect(self, id, effect_index, name, rounds_to_end, stacks, effect, remove_mode, remove_description):
+        self.__objects[id]._effects[effect_index].edit(name, rounds_to_end, stacks, effect, remove_mode, remove_description)
+
     def get_current_effects_to_execute(self):
         effects_to_execute = []
         if self.__current == 0:
@@ -63,7 +66,6 @@ class TM_data:
 
     def remove_effect(self, id, effect_index):
         self.__objects[id].add_effect(effect_index)
-        del self.__round_effects[id][effect_index]
     
     def effect_update_reaction(self, id, i, effect_mode, returned_value):
         if effect_mode == TM_remove_mode.ROUND_END_COUNT_BUT_TEST:
@@ -123,7 +125,7 @@ class TM_object:
 
     @property
     def data(self):
-        return (self._name, self._initiative, self._advantage, self._advantage_max, self._effects)
+        return (self._name, self._initiative, self._advantage, self._advantage_max, [x.show_effect_info() for x in self._effects])
 
 class TM_effect:
     DESCRIPTION_REPLACE_WITH_STACK_SIGN = '$'
@@ -165,6 +167,14 @@ class TM_effect:
         if self._stacks == 0:
             return True
 
+    def edit(self, name, rounds_to_end, stacks, effect, remove_mode, remove_description):
+        self._name = name
+        self._rounds_to_end = rounds_to_end
+        self._stacks = stacks
+        self._effect = effect
+        self._remove_mode = remove_mode
+        self._remove_description = remove_description 
+    
     def __insert_counters(self, text):
         return text.replace(self.DESCRIPTION_REPLACE_WITH_STACK_SIGN, self._stacks) \
                    .replace(self.DESCRIPTION_REPLACE_WITH_ROUNDS_SIGN, self._rounds_to_end)
