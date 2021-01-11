@@ -6,13 +6,35 @@ class TM_data:
         self.__order_list = [0]
         self.__current = 0
 
+        self.add_object("A", 10, 2)
+        self.add_object("B", 40, 5)
+        self.__objects[1].add_effect(
+            TM_effect("Krwawienie", None, 2, "$0% do testów odpierania chorób", TM_remove_mode.ROUND_END_TEST_STACK, "-1 Żyw, jeśli 0 -> $0% szans na śmierć z wykrwienia, jeśli dublet, cel leczy 1 stan" )
+        )
+        self.__objects[1].add_effect(
+            TM_effect("Bezduszny", None, None, "nie musi wykonywać testów psychologicznych", TM_remove_mode.NONE, None)
+        )
+        self.__objects[2].add_effect(
+            TM_effect("AA", 2, None, "ABC", TM_remove_mode.ROUND_END_COUNT, None)
+        )
+        self.__objects[2].add_effect(
+            TM_effect("AB", 2, None, "ABCD", TM_remove_mode.ROUND_END_COUNT_BUT_TEST, "TEST")
+        )
+        self.__objects[2].add_effect(
+            TM_effect("AC", 2, None, "ABCD", TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE, "MESSAGE")
+        )
+        self.__objects[1].add_effect(
+            TM_effect("AC", None, 3, "ABCD", TM_remove_mode.TURN_CAN_TEST_STACK, "TEST")
+        )
+        
+
     # object CRUD
     def add_object(self, name, initiative, advantage_max):
         id = self.__next_id()
         self.__objects[id] = TM_object(name, initiative, advantage_max)
         self.__order_list.append(id)
-        self.__order_list.sort(key=lambda a: self.__objects[a]._initiative)
-        return(self.tm_list())
+        self.__order_list.sort(key=lambda a: self.__objects[a]._initiative, reverse=True)
+        return(self.tm_list)
 
     def get_object(self, id):
         return self.__objects[id].data
@@ -29,7 +51,7 @@ class TM_data:
         self.__order_list.remove(id)
         if self.__current == id:
             self.next()
-        return self.tm_list()
+        return self.tm_list
 
     # effects
     def add_effect(self, id, name, rounds_to_end, stacks, effect, remove_mode, remove_description):
@@ -45,27 +67,27 @@ class TM_data:
             for id, effects in [(x[0], x[1]._effects) for x in self.__objects.items()]:
                 for i, effect in enumerate(effects, start=0):
                     if effect._remove_mode == TM_remove_mode.ROUND_END_COUNT:
-                        if effect.effects_to_execute():
+                        if effect.execute_effect_remove():
                             del self.__objects[id]._effects[i]
                     elif effect._remove_mode == TM_remove_mode.ROUND_END_COUNT_BUT_TEST:
-                        text = effect.effects_to_execute()
+                        text = effect.execute_effect_remove()
                         if text:
-                            effects_to_execute.append(id, i, effect._remove_mode, text)
+                            effects_to_execute.append((id, i, effect._remove_mode, text))
                     elif effect._remove_mode == TM_remove_mode.ROUND_END_TEST_STACK:
-                        effects_to_execute.append(id, i, TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE, text)
+                        effects_to_execute.append((id, i, TM_remove_mode.ROUND_END_TEST_STACK, effect.execute_effect_remove()))
                     elif effect._remove_mode == TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE:
-                        text = effect.effects_to_execute()
+                        text = effect.execute_effect_remove()
                         if text:
                             del self.__objects[id]._effects[i]
-                            effects_to_execute.append(id, i, effect._remove_mode, text)
+                            effects_to_execute.append((id, i, effect._remove_mode, text))
         else:
             for i, effect in enumerate(self.__objects[self.__current]._effects, start=0):
                 if effect._remove_mode == TM_remove_mode.TURN_CAN_TEST_STACK:
-                    effects_to_execute.append(id, i, TM_remove_mode.TURN_CAN_TEST_STACK, effect.execute_effect_remove())
+                    effects_to_execute.append((self.__current, i, TM_remove_mode.TURN_CAN_TEST_STACK, effect.execute_effect_remove()))
         return effects_to_execute
 
     def remove_effect(self, id, effect_index):
-        self.__objects[id].add_effect(effect_index)
+        self.__objects[id].remove_effect(effect_index)
     
     def effect_update_reaction(self, id, i, effect_mode, returned_value):
         if effect_mode == TM_remove_mode.ROUND_END_COUNT_BUT_TEST:
@@ -74,7 +96,7 @@ class TM_data:
         elif effect_mode == TM_remove_mode.ROUND_END_TEST_STACK or \
              effect_mode == TM_remove_mode.TURN_CAN_TEST_STACK:
             if returned_value != 0:
-                if self.__objects[id]._effects[i].change_stacks(self, returned_value):
+                if self.__objects[id]._effects[i].change_stacks(returned_value):
                     del self.__objects[id]._effects[i]
 
     #oder_list
@@ -86,15 +108,15 @@ class TM_data:
     
     #private
     def __next_id(self):
-        if len(self.__objects.keys) == 0:
+        if len(self.__objects.keys()) == 0:
             return 1
         else:
-            return max(self.__objects.keys) + 1
+            return max(self.__objects.keys()) + 1
 
     @property
     def tm_list(self):
         current_pos = self.__order_list.index(self.__current)
-        next_list = self.__order_list[current_pos:0] + self.__order_list[0:current_pos-1]
+        next_list = self.__order_list[current_pos:] + self.__order_list[:current_pos]
         return [(x, self.__objects[x]._name) for x in next_list]
         
 class TM_object:
@@ -145,21 +167,21 @@ class TM_effect:
         )
 
     def execute_effect_remove(self):
-        if self.remove_mode == TM_remove_mode.ROUND_END_COUNT:
-            if self.rounds_to_end == 0:
+        if self._remove_mode == TM_remove_mode.ROUND_END_COUNT:
+            if self._rounds_to_end == 0:
                 return True
             else:
-                self.rounds_to_end -= 1
+                self._rounds_to_end -= 1
                 return False
-        if self.remove_mode == TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE or \
-           self.remove_mode == TM_remove_mode.ROUND_END_COUNT_BUT_TEST:
-            if self.rounds_to_end == 0:
+        if self._remove_mode == TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE or \
+           self._remove_mode == TM_remove_mode.ROUND_END_COUNT_BUT_TEST:
+            if self._rounds_to_end == 0:
                 return self.__insert_counters(self._remove_description)
             else:
-                self.rounds_to_end -= 1
+                self._rounds_to_end -= 1
                 return
-        if self.remove_mode == TM_remove_mode.ROUND_END_TEST_STACK or \
-           self.remove_mode == TM_remove_mode.TURN_CAN_TEST_STACK:
+        if self._remove_mode == TM_remove_mode.ROUND_END_TEST_STACK or \
+           self._remove_mode == TM_remove_mode.TURN_CAN_TEST_STACK:
             return self.__insert_counters(self._remove_description)
             
     def change_stacks(self, stacks_delta):
@@ -176,8 +198,8 @@ class TM_effect:
         self._remove_description = remove_description 
     
     def __insert_counters(self, text):
-        return text.replace(self.DESCRIPTION_REPLACE_WITH_STACK_SIGN, self._stacks) \
-                   .replace(self.DESCRIPTION_REPLACE_WITH_ROUNDS_SIGN, self._rounds_to_end)
+        return text.replace(self.DESCRIPTION_REPLACE_WITH_STACK_SIGN, str(self._stacks)) \
+                   .replace(self.DESCRIPTION_REPLACE_WITH_ROUNDS_SIGN, str(self._rounds_to_end))
         
 class TM_remove_mode(Enum):
     ROUND_END_TEST_STACK = "Make test at end of round to remove stacks"
