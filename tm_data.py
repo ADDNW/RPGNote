@@ -4,30 +4,7 @@ class TM_data:
     def __init__(self):
         self.__objects = {0: TM_object("ROUND END", -1, 0)}
         self.__order_list = [0]
-        self.__current = 0
-
-        self.add_object("Ork", 35, 2)
-        self.add_object("Goblin", 45, 3)
-        self.add_object("Rycerz", 40, 4)
-        self.__objects[1].add_effect(
-            TM_effect("Krwawienie", -1, 2, "-$0% do testów odpierania chorób", TM_remove_mode.ROUND_END_TEST_STACK, "-1 Żyw, jeśli 0 -> $0% szans na śmierć z wykrwienia, jeśli dublet, cel leczy 1 stan" )
-        )
-        self.__objects[1].add_effect(
-            TM_effect("Bezduszny", -1, -1, "Nie musi wykonywać testów psychologicznych", TM_remove_mode.NONE, None)
-        )
-        self.__objects[1].add_effect(
-            TM_effect("Głupi", 2, -1, "Umrze za @ rund", TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE, "Umiera")
-        )
-        self.__objects[2].add_effect(
-            TM_effect("Głupi", 2, -1, "Nie potrafi wykorzystywać zdobytych przewag", TM_remove_mode.ROUND_END_COUNT, None)
-        )
-        self.__objects[3].add_effect(
-            TM_effect("Cnota mocy", 2, -1, "+2 do zadawanych obrażeń", TM_remove_mode.ROUND_END_COUNT_BUT_TEST, "TEST")
-        )
-        self.__objects[3].add_effect(
-            TM_effect("Cnota mocy", -1, 2, "+2 do zadawanych obrażeń", TM_remove_mode.TURN_CAN_TEST_STACK, "TEST")
-        )
-        
+        self.__current = 0        
 
     # object CRUD
     def add_object(self, name, initiative, advantage_max):
