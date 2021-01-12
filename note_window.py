@@ -223,7 +223,7 @@ class Note_window(tk.Tk):
       self.tm_window.lift()
     else:
       self.tm_window = TM_window(self)
-      self.tm_window.protocol("WM_DELETE_WINDOW", lambda _: self.tm_window.destroy()) 
+      self.tm_window.protocol("WM_DELETE_WINDOW", lambda : self.tm_window.destroy()) 
 
   #Note_window END
 
