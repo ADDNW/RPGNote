@@ -6,25 +6,20 @@ class TM_data:
         self.__order_list = [0]
         self.__current = 0
 
-        self.add_object("A", 10, 2)
-        self.add_object("B", 40, 5)
+        self.add_object("Ork", 35, 2)
+        self.add_object("Goblin", 45, 3)
+        self.add_object("Rycerz", 40, 4)
         self.__objects[1].add_effect(
-            TM_effect("Krwawienie", None, 2, "$0% do testów odpierania chorób", TM_remove_mode.ROUND_END_TEST_STACK, "-1 Żyw, jeśli 0 -> $0% szans na śmierć z wykrwienia, jeśli dublet, cel leczy 1 stan" )
-        )
-        self.__objects[1].add_effect(
-            TM_effect("Bezduszny", None, None, "nie musi wykonywać testów psychologicznych", TM_remove_mode.NONE, None)
-        )
-        self.__objects[2].add_effect(
-            TM_effect("AA", 2, None, "ABC", TM_remove_mode.ROUND_END_COUNT, None)
-        )
-        self.__objects[2].add_effect(
-            TM_effect("AB", 2, None, "ABCD", TM_remove_mode.ROUND_END_COUNT_BUT_TEST, "TEST")
-        )
-        self.__objects[2].add_effect(
-            TM_effect("AC", 2, None, "ABCD", TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE, "MESSAGE")
+            TM_effect("Krwawienie", None, 2, "-$0% do testów odpierania chorób", TM_remove_mode.ROUND_END_TEST_STACK, "-1 Żyw, jeśli 0 -> $0% szans na śmierć z wykrwienia, jeśli dublet, cel leczy 1 stan" )
         )
         self.__objects[1].add_effect(
-            TM_effect("AC", None, 3, "ABCD", TM_remove_mode.TURN_CAN_TEST_STACK, "TEST")
+            TM_effect("Bezduszny", None, None, "Nie musi wykonywać testów psychologicznych", TM_remove_mode.NONE, None)
+        )
+        self.__objects[2].add_effect(
+            TM_effect("Głupi", 2, None, "Nie potrafi wykorzystywać zdobytych przewag", TM_remove_mode.NONE, None)
+        )
+        self.__objects[3].add_effect(
+            TM_effect("Cnota mocy", 2, None, "+2 do zadawanych obrażeń", TM_remove_mode.ROUND_END_COUNT_BUT_TEST, "TEST")
         )
         
 
@@ -34,14 +29,15 @@ class TM_data:
         self.__objects[id] = TM_object(name, initiative, advantage_max)
         self.__order_list.append(id)
         self.__order_list.sort(key=lambda a: self.__objects[a]._initiative, reverse=True)
-        return(self.tm_list)
+        return self.tm_list
 
     def get_object(self, id):
         return self.__objects[id].data
 
     def edit_object(self, id, name, initiative, advantage_max):
         self.__objects[id].edit(name, initiative, advantage_max)
-        return (self.tm_list(), self.get_object(id))
+        self.__order_list.sort(key=lambda a: self.__objects[a]._initiative, reverse=True)
+        return self.tm_list
 
     def change_advantage(self, id, new_advantage):
         return self.__objects[id].set_advantage(new_advantage)
@@ -60,6 +56,12 @@ class TM_data:
 
     def edit_effect(self, id, effect_index, name, rounds_to_end, stacks, effect, remove_mode, remove_description):
         self.__objects[id]._effects[effect_index].edit(name, rounds_to_end, stacks, effect, remove_mode, remove_description)
+
+    def get_effects(self, id):
+        return self.__objects[id].data[4]
+
+    def get_effect(self, id, effect_index):
+        return self.__objects[id]._effects[effect_index].data
 
     def get_current_effects_to_execute(self):
         effects_to_execute = []
@@ -130,6 +132,8 @@ class TM_object:
     def edit(self, name, initiative, advantage_max):
         self._name = name
         self._initiative = initiative
+        if self._advantage > advantage_max:
+            self._advantage = advantage_max
         self._advantage_max = advantage_max
         
     def set_advantage(self, advantage):
@@ -200,7 +204,15 @@ class TM_effect:
     def __insert_counters(self, text):
         return text.replace(self.DESCRIPTION_REPLACE_WITH_STACK_SIGN, str(self._stacks)) \
                    .replace(self.DESCRIPTION_REPLACE_WITH_ROUNDS_SIGN, str(self._rounds_to_end))
-        
+    
+    @property
+    def data(self):
+        return (
+            self._name, self._rounds_to_end, self._stacks, 
+            self.__insert_counters(self._effect), self._remove_mode,
+            self.__insert_counters(self._remove_description)
+        )
+
 class TM_remove_mode(Enum):
     ROUND_END_TEST_STACK = "Make test at end of round to remove stacks"
     ROUND_END_COUNT = "Effect will expire after some rounds"
@@ -208,3 +220,4 @@ class TM_remove_mode(Enum):
     NONE = "Effect won't expire durring this fight"
     ROUND_END_COUNT_BUT_TEST = "Effect will expire after some rounds, but can be prolong with test"
     ROUND_END_MESSAGE_ON_EXPIRE = "Effect will happen at expired"
+    #TODO remove string values from constants; add method to extract name and description by constant

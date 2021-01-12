@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
+from enum import Enum
 from tm_data import TM_data, TM_remove_mode
 
 EFFECT_WIDTH = 60
@@ -9,9 +10,9 @@ LEFT_TOP_NAME = 'Current object:'
 RIGHT_EFFECT_LIST_NAME = 'right_effect_list'
 RIGHT_TOP_NAME = 'Selected object:'
 
-class TM_window(tk.Tk):
-    def __init__(self):
-        super().__init__()
+class TM_window(tk.Toplevel):
+    def __init__(self, master):
+        super().__init__(master=master)
         
         self.__data = TM_data()
         
@@ -22,6 +23,7 @@ class TM_window(tk.Tk):
 
         self.__create_GUI()
         self._read_to_list()
+        self.lift()
 
     def __create_GUI(self):
         self.minsize(800,600)
@@ -63,12 +65,12 @@ class TM_window(tk.Tk):
             self.__execute__effects(self.__data.get_current_effects_to_execute())
             self.__left_character._hide()
         else:
-            self.__left_character._new_object(next_id, self.__data.get_object(next_id))
+            self.__left_character._show_object(next_id)
             if self.__right_character._id == next_id:
                 self.__right_character._hide()
 
     def __add_object(self):
-        pass #TODO
+        self._open_dialog(Dialog_type.DIALOG_OBJECT)
 
     def _read_to_list(self, new_list=None):
         if not new_list:
@@ -81,32 +83,64 @@ class TM_window(tk.Tk):
     def __execute__effects(self, effects):
         for id, index, mode, text in effects:
             if id != self.__left_character._id:
-                self.__left_character._new_object(id, self.__data.get_object(id))
+                self.__left_character._show_object(id)
+                self.update_idletasks()
             #TODO dialogs
             if mode == TM_remove_mode.ROUND_END_COUNT_BUT_TEST:
-                result = True #or False
+                self._open_dialog(Dialog_type.DIALOG_END_TEST, (id, index, mode, text))
             elif mode == TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE:
-                result = None
+                self._open_dialog(Dialog_type.DIALOG_END_MESSAGE, (id, index, mode, text))
             elif mode == TM_remove_mode.ROUND_END_TEST_STACK or \
                  mode == TM_remove_mode.TURN_CAN_TEST_STACK:
-                result = -1
-            self.__data.effect_update_reaction(id, index, mode, result)
+                self._open_dialog(Dialog_type.DIALOG_STACK_TEST, (id, index, mode, text))         
     
     def __on_list_element_selected(self, event):
-        w = event.widget
-        if w._name == ORDER_LIST_NAME:
-            index = self.__order_list_box.curselection()[0]
-            if index != 0 and self.__order_list[index][0] != 0: #not current and not ROUND END
-                self.__right_character._new_object(
-                    self.__order_list[index][0], self.__data.get_object(self.__order_list[index][0])
-                )
+        index = self.__order_list_box.curselection()[0]
+        if index != 0 and self.__order_list[index][0] != 0: #not current and not ROUND END
+            self.__right_character._show_object(self.__order_list[index][0])
+
+    #dialogs
+    def _open_dialog(self, dialog_type, params=None):
+        dialog = TM_dialog(self, dialog_type, params)     
+        self.wm_attributes("-disabled", True)
+        dialog.protocol("WM_DELETE_WINDOW", lambda : self._close_dialog(dialog_type, dialog, params==None))
+
+    def _close_dialog(self, dialog_type, dialog, is_new):
+        if not dialog.canceled:
+            if dialog_type == Dialog_type.DIALOG_OBJECT:
+                valid = len(dialog.data[1]) and dialog.data[3] >= 0 and dialog.data[3] >= 0
+                if valid:
+                    if is_new:
+                        self._read_to_list(self.__data.add_object(dialog.data[1], dialog.data[2], dialog.data[3]))
+                    else:
+                        self._read_to_list(self.__data.edit_object(dialog.data[0], dialog.data[1], dialog.data[2], dialog.data[3]))
+                        self.__get_object_frame_by_id(dialog.data[0])._show_object()
+            elif dialog_type == Dialog_type.DIALOG_EFFECT:
+                if is_new:
+                    self.__data.add_effect(dialog.data[0], dialog.data[2], dialog.data[3], dialog.data[4], dialog.data[5], dialog.data[6], dialog.data[7])
+                else:
+                    self.__data.edit_effect(dialog.data[0], dialog.data[1], dialog.data[2], dialog.data[3], dialog.data[4], dialog.data[5], dialog.data[6], dialog.data[7])
+                self.__get_object_frame_by_id(dialog.data[0])._show_effects()
+            elif dialog_type == Dialog_type.DIALOG_STACK_TEST or \
+                 dialog_type == Dialog_type.DIALOG_END_TEST:
+                self.__data.effect_update_reaction(dialog.data[0], dialog.data[1], dialog.data[2], dialog.data[3])
+
+        if valid:
+            dialog.destroy()
+            self.wm_attributes("-disabled", False)
+            self.lift()
+    
+    def __get_object_frame_by_id(self, id):
+        if self.__left_character._id == id:
+            return self.__left_character
+        elif self.__right_character._id == id:
+            return self.__right_character
 
 
 class TM_object_Frame(tk.Frame):
     def __init__(self, parent, data, is_left):
         super().__init__(parent)
         self.__data = data
-        self.__parent = parent
 
         self._id = 0
 
@@ -127,20 +161,29 @@ class TM_object_Frame(tk.Frame):
 
         self.__create_GUI(is_left)
 
-    def _new_object(self, id, character_data):
-        self.grid()
-        self._id = id
+    def _show_object(self, id=None):
+        if id:
+            self.grid()
+            self._id = id
         (
             name,
             initiative,
             self.__advantage,
             self.__advantage_max,
-            self.__effects
-        ) = character_data
+            effects
+        ) = self.__data.get_object(self._id)
     
         self.__name.set(name)
         self.__initiative.set(initiative)
         self.__create_advantage_text()
+        self.__update_buttons_status()
+        self._show_effects(effects)
+        
+    def _show_effects(self, effects=None):
+        if not effects:
+            self.__effects = self.__data.get_effects(self._id)
+        else:
+            self.__effects = effects
         self.__effects_list.delete(0, tk.END)
         for effect in self.__effects:
             self.__effects_list.insert(tk.END, self.__format_effect(effect))
@@ -196,7 +239,7 @@ class TM_object_Frame(tk.Frame):
 
         tk.Label(content, textvariable=self.__advantage_text).grid(row = 2, column = 2, rowspan = 2, sticky=tk.NSEW)
 
-        self.__effects_list = tk.Listbox(content, width=EFFECT_WIDTH, name= LEFT_EFFECT_LIST_NAME if is_left else RIGHT_EFFECT_LIST_NAME)
+        self.__effects_list = tk.Listbox(content, width=EFFECT_WIDTH, name=LEFT_EFFECT_LIST_NAME if is_left else RIGHT_EFFECT_LIST_NAME)
         self.__effects_list.grid(row = 4, column = 0, columnspan = 3, sticky=tk.NSEW)
 
         content.rowconfigure(0, weight=3)
@@ -229,46 +272,52 @@ class TM_object_Frame(tk.Frame):
 
     #buttons
     def __edit(self):
-        pass #TODO
+        self.master._open_dialog(Dialog_type.DIALOG_OBJECT,  (self._id, self.__name.get(), self.__initiative.get(), self.__advantage_max))
 
     def __remove(self):
         if messagebox.askokcancel("delete", "Are you sure to delete it?", icon='warning'):
-            self.__parent._read_to_list(self.__data.remove_object(self._id))
+            self.master._read_to_list(self.__data.remove_object(self._id))
             self._hide()
 
-    
     def __add_effect(self):
-        pass #TODO
+        self.master._open_dialog(Dialog_type.DIALOG_EFFECT)
 
     def __edit_effect(self):
-        pass #TODO
+        if self.__effects_list.curselection():
+            index = self.__effects_list.curselection()[0]
+            self.master._open_dialog(Dialog_type.DIALOG_EFFECT, self.__data.get_effect(self._id, index))
 
     def __remove_effect(self):
         if self.__effects_list.curselection():
             if messagebox.askokcancel("delete", "Are you sure to delete it?", icon='warning'):
                 index = self.__effects_list.curselection()[0]
                 self.__effects_list.delete(index)
-                self.__data.remove_effect(self._id, index)
-                
+                self.__data.remove_effect(self._id, index)          
 
     def __increase_advances(self):
-        if self.__advantage == 0:
-            self.__addvanate_remove_button.config(state=tk.NORMAL)
         if self.__data.change_advantage(self._id, self.__advantage+1):
             self.__advantage += 1
             self.__create_advantage_text()
-            if self.__advantage == self.__advantage_max:
-                self.__addvanate_add_button.config(state=tk.DISABLED)
+            self.__update_buttons_status()
 
     def __decrease_advances(self):
-        if self.__advantage == self.__advantage_max:
-            self.__addvanate_add_button.config(state=tk.NORMAL)
         if self.__data.change_advantage(self._id, self.__advantage-1):
             self.__advantage -= 1
             self.__create_advantage_text()
-            if self.__advantage == 0:
-                self.__addvanate_remove_button.config(state=tk.DISABLED)
+            self.__update_buttons_status()
 
+    def __update_buttons_status(self):
+        if self.__advantage == 0: 
+            self.__addvanate_remove_button.config(state=tk.DISABLED)
+        else:
+            self.__addvanate_remove_button.config(state=tk.NORMAL)
+        if self.__advantage == self.__advantage_max: 
+            self.__addvanate_add_button.config(state=tk.DISABLED)
+        else:
+            self.__addvanate_add_button.config(state=tk.NORMAL)
+        
+
+    #private
     def __create_advantage_text(self):
         self.__advantage_text.set(f"{self.__advantage} / {self.__advantage_max}")
 
@@ -281,5 +330,83 @@ class TM_object_Frame(tk.Frame):
         formated += effect[3]
         return formated
 
+
+class TM_dialog(tk.Toplevel):
+    def __init__(self, master, dialog_type, params):
+        super().__init__(master=master)
+        self.data = params
+        self.is_new = params == None
+        self.canceled = True
+        self.dialog_type = dialog_type
+
+        if dialog_type == Dialog_type.DIALOG_OBJECT:
+            self.__object_dialog()
+        elif dialog_type == Dialog_type.DIALOG_EFFECT:
+            self.__effect_dialog()
+        elif dialog_type == Dialog_type.DIALOG_STACK_TEST:
+            self.__stack_dialog()
+        elif dialog_type == Dialog_type.DIALOG_END_TEST:
+            self.__end_test_dialog()
+        elif dialog_type == Dialog_type.DIALOG_END_MESSAGE:
+            self.__end_message_dialog()
+
+    #build
+    def __object_dialog(self):
+        #params: id, name, ini, adv_max
+        if not self.data:
+            self.data = (-1, "", 0, 0)
+
+        name = tk.StringVar(value=self.data[1])
+        initiative = tk.IntVar(value=self.data[2])
+        advantage_max = tk.IntVar(value=self.data[3])
+
+        self.geometry("240x140")
+        tk.Label(self, text = "Name").place(x = 10, y = 10)
+        tk.Entry(self, textvariable=name).place(x = 100, y = 10)
+        tk.Label(self, text = "Initiative").place(x = 10, y = 40)
+        tk.Entry(self, textvariable=initiative).place(x = 100, y = 40)
+        tk.Label(self, text = "Max advantage").place(x = 10, y = 70)
+        tk.Entry(self, textvariable=advantage_max).place(x = 100, y = 70)
+        tk.Button(self, text = "Save", command=lambda: self.__accept_dialog(
+            (self.data[0], name.get(), initiative.get(), advantage_max.get())
+        )).place(x = 60, y = 100)
+        tk.Button(self, text = "Cancel", command=self.__reject_dialog).place(x = 120, y = 100)
+
+    def __effect_dialog(self):
+        #params: id, index, name, r, s, eff, mode, text
+        pass
+
+    def __stack_dialog(self):
+        #params: id, index, mode, text->returned
+        pass   
+        
+    def __end_test_dialog(self):
+        #params: id, index, mode, text->returned
+        pass
+
+    def __end_message_dialog(self):
+        #params: id, index, mode, text->returned
+        pass   
+
+    #result
+    def __accept_dialog(self, new_data):
+        self.data = new_data
+        self.canceled = False
+        self.master._close_dialog(self.dialog_type, self, self.is_new)
+
+    def __reject_dialog(self):
+        self.master._close_dialog(self.dialog_type, self, self.is_new)
+
+
+class Dialog_type(Enum):
+    DIALOG_OBJECT = 0
+    DIALOG_EFFECT = 1
+    DIALOG_STACK_TEST = 2
+    DIALOG_END_TEST = 3
+    DIALOG_END_MESSAGE = 4
+
+
 if __name__ == "__main__":
-    TM_window().mainloop()
+    root = tk.Tk()
+    root.wm_state('iconic')
+    TM_window(root).mainloop()
