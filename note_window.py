@@ -1,8 +1,9 @@
 import tkinter as tk
 from tkinter import filedialog, ttk
+
 from notes_compiler import format_file, extract_filename, compile_all_notes, \
   MARKER_TARGET_PATTERN, MARKER_ENDING, MARKER_LINK_PATTERN, MARK_LINK, MARKER_LINK_BASIC, MARKER_TARGET_BASIC
-
+from tm_window import TM_window
 
 class Note_window(tk.Tk):
   def __init__(self):
@@ -25,6 +26,8 @@ class Note_window(tk.Tk):
     self.note_area = None
     self.marked_files_area = None
     self.write_panel_area = None
+
+    self.tm_window = None
 
     self.__create_GUI()
   
@@ -111,18 +114,21 @@ class Note_window(tk.Tk):
     if self.working_directory:
       for file in filedialog.askopenfilenames():
         if file.startswith(self.working_directory):
-          self.marked_files.append(file)
-          self.marked_files_area.insert(tk.END, extract_filename(file))
+          if file not in self.marked_files:
+            self.marked_files.append(file)
+            self.marked_files_area.insert(tk.END, extract_filename(file))
 
   def __open_file(self):
-    path = filedialog.askopenfilename()
-    if self.working_directory and path.startswith(self.working_directory):
-      self.__read_file(path)
+    if self.working_directory:
+      path = filedialog.askopenfilename(filetypes=[("Text file", ".txt"), ("RPG file", ".rpg")])
+      if path and path.startswith(self.working_directory):
+        self.__read_file(path)
       
   def __save_file(self, event=None):
-    self.current_file_content = self.note_area.get(1.0, tk.END)[0:-1]
-    with open(self.current_file, "w+",  encoding="UTF-8") as file:
-      file.write(self.current_file_content)
+    if self.write_mode:
+      self.current_file_content = self.note_area.get(1.0, tk.END)[0:-1]
+      with open(self.current_file, "w+",  encoding="UTF-8") as file:
+        file.write(self.current_file_content)
 
   #marking files
   def __mark_current_file(self):
@@ -189,12 +195,8 @@ class Note_window(tk.Tk):
       self.note_area.tag_bind(tag, "<ButtonRelease-1>", 
         lambda e, i=id, f=file: self.__follow_link(e, i, f)
       )
-      
       counter += 1
-
-  def __open_TM_window(self):
-    pass
-
+  
   def __follow_link(self, event, target_ID, target_file):
     if target_file == self.current_file:
       self.note_area.mark_set(tk.INSERT, self.current_file_pointers[target_ID])
@@ -214,6 +216,14 @@ class Note_window(tk.Tk):
     
     if not self.write_mode:
       self.note_area.config(state= tk.DISABLED)
+
+  #TM_window
+  def __open_TM_window(self):
+    if self.tm_window:
+      self.tm_window.lift()
+    else:
+      self.tm_window = TM_window(self)
+      self.tm_window.protocol("WM_DELETE_WINDOW", lambda _: self.tm_window.destroy()) 
 
   #Note_window END
 
