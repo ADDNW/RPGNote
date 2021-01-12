@@ -10,16 +10,22 @@ class TM_data:
         self.add_object("Goblin", 45, 3)
         self.add_object("Rycerz", 40, 4)
         self.__objects[1].add_effect(
-            TM_effect("Krwawienie", None, 2, "-$0% do testów odpierania chorób", TM_remove_mode.ROUND_END_TEST_STACK, "-1 Żyw, jeśli 0 -> $0% szans na śmierć z wykrwienia, jeśli dublet, cel leczy 1 stan" )
+            TM_effect("Krwawienie", -1, 2, "-$0% do testów odpierania chorób", TM_remove_mode.ROUND_END_TEST_STACK, "-1 Żyw, jeśli 0 -> $0% szans na śmierć z wykrwienia, jeśli dublet, cel leczy 1 stan" )
         )
         self.__objects[1].add_effect(
-            TM_effect("Bezduszny", None, None, "Nie musi wykonywać testów psychologicznych", TM_remove_mode.NONE, None)
+            TM_effect("Bezduszny", -1, -1, "Nie musi wykonywać testów psychologicznych", TM_remove_mode.NONE, None)
+        )
+        self.__objects[1].add_effect(
+            TM_effect("Głupi", 2, -1, "Umrze za @ rund", TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE, "Umiera")
         )
         self.__objects[2].add_effect(
-            TM_effect("Głupi", 2, None, "Nie potrafi wykorzystywać zdobytych przewag", TM_remove_mode.NONE, None)
+            TM_effect("Głupi", 2, -1, "Nie potrafi wykorzystywać zdobytych przewag", TM_remove_mode.ROUND_END_COUNT, None)
         )
         self.__objects[3].add_effect(
-            TM_effect("Cnota mocy", 2, None, "+2 do zadawanych obrażeń", TM_remove_mode.ROUND_END_COUNT_BUT_TEST, "TEST")
+            TM_effect("Cnota mocy", 2, -1, "+2 do zadawanych obrażeń", TM_remove_mode.ROUND_END_COUNT_BUT_TEST, "TEST")
+        )
+        self.__objects[3].add_effect(
+            TM_effect("Cnota mocy", -1, 2, "+2 do zadawanych obrażeń", TM_remove_mode.TURN_CAN_TEST_STACK, "TEST")
         )
         
 
@@ -190,7 +196,7 @@ class TM_effect:
             
     def change_stacks(self, stacks_delta):
         self._stacks += stacks_delta
-        if self._stacks == 0:
+        if self._stacks <= 0:
             return True
 
     def edit(self, name, rounds_to_end, stacks, effect, remove_mode, remove_description):
@@ -202,22 +208,74 @@ class TM_effect:
         self._remove_description = remove_description 
     
     def __insert_counters(self, text):
-        return text.replace(self.DESCRIPTION_REPLACE_WITH_STACK_SIGN, str(self._stacks)) \
+        if text:
+            return text.replace(self.DESCRIPTION_REPLACE_WITH_STACK_SIGN, str(self._stacks)) \
                    .replace(self.DESCRIPTION_REPLACE_WITH_ROUNDS_SIGN, str(self._rounds_to_end))
     
     @property
     def data(self):
         return (
             self._name, self._rounds_to_end, self._stacks, 
-            self.__insert_counters(self._effect), self._remove_mode,
-            self.__insert_counters(self._remove_description)
+            self._effect, self._remove_mode,
+            self._remove_description
         )
 
 class TM_remove_mode(Enum):
-    ROUND_END_TEST_STACK = "Make test at end of round to remove stacks"
-    ROUND_END_COUNT = "Effect will expire after some rounds"
-    TURN_CAN_TEST_STACK = "Can make test during turn to remove stacks"
-    NONE = "Effect won't expire durring this fight"
-    ROUND_END_COUNT_BUT_TEST = "Effect will expire after some rounds, but can be prolong with test"
-    ROUND_END_MESSAGE_ON_EXPIRE = "Effect will happen at expired"
-    #TODO remove string values from constants; add method to extract name and description by constant
+    ROUND_END_TEST_STACK = 0
+    ROUND_END_COUNT = 1
+    TURN_CAN_TEST_STACK = 2
+    NONE = 3
+    ROUND_END_COUNT_BUT_TEST = 4
+    ROUND_END_MESSAGE_ON_EXPIRE = 5
+
+    @staticmethod
+    def get_options():
+        #lists with indexes equal to enumerated value
+        return [
+            "Test on round end - remove stacks",
+            "Lasts set duration in rounds",
+            "Test in turn - remove stacks",
+            "Static effect",
+            "Lasts set duration, then test to keep",
+            "Trigers after set duration"
+        ]
+    
+    @staticmethod
+    def get_default():
+        return TM_remove_mode.get_options()[3] #must be manually updated
+
+    @staticmethod
+    def needs_rounds(option):
+        return option in TM_remove_mode.get_options() and TM_remove_mode.get_options().index(option) in [
+            TM_remove_mode.ROUND_END_COUNT.value, TM_remove_mode.ROUND_END_COUNT_BUT_TEST.value, TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE.value
+        ]
+        
+    @staticmethod
+    def needs_stacks(option):
+        return option in TM_remove_mode.get_options() and TM_remove_mode.get_options().index(option) in [
+            TM_remove_mode.TURN_CAN_TEST_STACK.value, TM_remove_mode.ROUND_END_TEST_STACK.value
+        ]
+        
+    @staticmethod
+    def needs_dialog(option):
+        return option in TM_remove_mode.get_options() and TM_remove_mode.get_options().index(option) in [
+            TM_remove_mode.TURN_CAN_TEST_STACK.value, TM_remove_mode.ROUND_END_TEST_STACK.value, TM_remove_mode.ROUND_END_COUNT_BUT_TEST.value, TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE.value
+        ]
+    
+    @staticmethod
+    def parse(option):
+        if option not in TM_remove_mode.get_options():
+            return None
+        elif TM_remove_mode.get_options().index(option) == TM_remove_mode.ROUND_END_TEST_STACK.value:
+            return TM_remove_mode.ROUND_END_TEST_STACK
+        elif TM_remove_mode.get_options().index(option) == TM_remove_mode.ROUND_END_COUNT.value:
+            return TM_remove_mode.ROUND_END_COUNT
+        elif TM_remove_mode.get_options().index(option) == TM_remove_mode.TURN_CAN_TEST_STACK.value:
+            return TM_remove_mode.TURN_CAN_TEST_STACK
+        elif TM_remove_mode.get_options().index(option) == TM_remove_mode.ROUND_END_TEST_STACK.value:
+            return TM_remove_mode.ROUND_END_TEST_STACK
+        elif TM_remove_mode.get_options().index(option) == TM_remove_mode.NONE.value:
+            return TM_remove_mode.NONE
+        elif TM_remove_mode.get_options().index(option) == TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE.value:
+            return TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE
+

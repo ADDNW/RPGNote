@@ -1,14 +1,19 @@
 import tkinter as tk
 from tkinter import messagebox
 from enum import Enum
-from tm_data import TM_data, TM_remove_mode
+from tm_data import TM_data, TM_remove_mode, TM_effect
 
-EFFECT_WIDTH = 60
+EFFECT_ROW_WIDTH = 60
 ORDER_LIST_NAME = 'order_list'
 LEFT_EFFECT_LIST_NAME = 'left_effect_list'
 LEFT_TOP_NAME = 'Current object:'
 RIGHT_EFFECT_LIST_NAME = 'right_effect_list'
 RIGHT_TOP_NAME = 'Selected object:'
+
+#dialog_constants
+EFFECT_DESCRIPTION_WIDTH = 50
+TEXT_LINE_WIDTH = 200
+ROUNDS_STATS_DELTA_ENTRY_WIDTH = 5
 
 class TM_window(tk.Toplevel):
     def __init__(self, master):
@@ -85,14 +90,13 @@ class TM_window(tk.Toplevel):
             if id != self.__left_character._id:
                 self.__left_character._show_object(id)
                 self.update_idletasks()
-            #TODO dialogs
             if mode == TM_remove_mode.ROUND_END_COUNT_BUT_TEST:
                 self._open_dialog(Dialog_type.DIALOG_END_TEST, (id, index, mode, text))
             elif mode == TM_remove_mode.ROUND_END_MESSAGE_ON_EXPIRE:
                 self._open_dialog(Dialog_type.DIALOG_END_MESSAGE, (id, index, mode, text))
             elif mode == TM_remove_mode.ROUND_END_TEST_STACK or \
                  mode == TM_remove_mode.TURN_CAN_TEST_STACK:
-                self._open_dialog(Dialog_type.DIALOG_STACK_TEST, (id, index, mode, text))         
+                self._open_dialog(Dialog_type.DIALOG_STACK_TEST, (id, index, mode, text))   
     
     def __on_list_element_selected(self, event):
         index = self.__order_list_box.curselection()[0]
@@ -104,17 +108,16 @@ class TM_window(tk.Toplevel):
         dialog = TM_dialog(self, dialog_type, params)     
         self.wm_attributes("-disabled", True)
         dialog.protocol("WM_DELETE_WINDOW", lambda : self._close_dialog(dialog_type, dialog, params==None))
+        self.wait_window(dialog)
 
     def _close_dialog(self, dialog_type, dialog, is_new):
         if not dialog.canceled:
             if dialog_type == Dialog_type.DIALOG_OBJECT:
-                valid = len(dialog.data[1]) and dialog.data[3] >= 0 and dialog.data[3] >= 0
-                if valid:
-                    if is_new:
-                        self._read_to_list(self.__data.add_object(dialog.data[1], dialog.data[2], dialog.data[3]))
-                    else:
-                        self._read_to_list(self.__data.edit_object(dialog.data[0], dialog.data[1], dialog.data[2], dialog.data[3]))
-                        self.__get_object_frame_by_id(dialog.data[0])._show_object()
+                if is_new:
+                    self._read_to_list(self.__data.add_object(dialog.data[1], dialog.data[2], dialog.data[3]))
+                else:
+                    self._read_to_list(self.__data.edit_object(dialog.data[0], dialog.data[1], dialog.data[2], dialog.data[3]))
+                    self.__get_object_frame_by_id(dialog.data[0])._show_object()
             elif dialog_type == Dialog_type.DIALOG_EFFECT:
                 if is_new:
                     self.__data.add_effect(dialog.data[0], dialog.data[2], dialog.data[3], dialog.data[4], dialog.data[5], dialog.data[6], dialog.data[7])
@@ -124,11 +127,11 @@ class TM_window(tk.Toplevel):
             elif dialog_type == Dialog_type.DIALOG_STACK_TEST or \
                  dialog_type == Dialog_type.DIALOG_END_TEST:
                 self.__data.effect_update_reaction(dialog.data[0], dialog.data[1], dialog.data[2], dialog.data[3])
-
-        if valid:
-            dialog.destroy()
-            self.wm_attributes("-disabled", False)
-            self.lift()
+                self.__get_object_frame_by_id(dialog.data[0])._show_effects()
+   
+        dialog.destroy()
+        self.wm_attributes("-disabled", False)
+        self.lift()
     
     def __get_object_frame_by_id(self, id):
         if self.__left_character._id == id:
@@ -239,7 +242,7 @@ class TM_object_Frame(tk.Frame):
 
         tk.Label(content, textvariable=self.__advantage_text).grid(row = 2, column = 2, rowspan = 2, sticky=tk.NSEW)
 
-        self.__effects_list = tk.Listbox(content, width=EFFECT_WIDTH, name=LEFT_EFFECT_LIST_NAME if is_left else RIGHT_EFFECT_LIST_NAME)
+        self.__effects_list = tk.Listbox(content, width=EFFECT_ROW_WIDTH, name=LEFT_EFFECT_LIST_NAME if is_left else RIGHT_EFFECT_LIST_NAME)
         self.__effects_list.grid(row = 4, column = 0, columnspan = 3, sticky=tk.NSEW)
 
         content.rowconfigure(0, weight=3)
@@ -280,12 +283,14 @@ class TM_object_Frame(tk.Frame):
             self._hide()
 
     def __add_effect(self):
-        self.master._open_dialog(Dialog_type.DIALOG_EFFECT)
+        self.master._open_dialog(Dialog_type.DIALOG_EFFECT, self._id)
 
     def __edit_effect(self):
         if self.__effects_list.curselection():
             index = self.__effects_list.curselection()[0]
-            self.master._open_dialog(Dialog_type.DIALOG_EFFECT, self.__data.get_effect(self._id, index))
+            current_data = self.__data.get_effect(self._id, index)
+            edit_data = (self._id, index, current_data[0], current_data[1], current_data[2], current_data[3], current_data[4], current_data[5])
+            self.master._open_dialog(Dialog_type.DIALOG_EFFECT, edit_data)
 
     def __remove_effect(self):
         if self.__effects_list.curselection():
@@ -323,9 +328,9 @@ class TM_object_Frame(tk.Frame):
 
     def __format_effect(self, effect):
         formated = effect[0] + ': ' 
-        if effect[1]:
+        if effect[1] != -1:
             formated += "Rounds: " + str(effect[1]) + "; "
-        if effect[2]:
+        if effect[2] != -1:
             formated += "Stacks: " + str(effect[2]) + "; "
         formated += effect[3]
         return formated
@@ -356,6 +361,12 @@ class TM_dialog(tk.Toplevel):
         if not self.data:
             self.data = (-1, "", 0, 0)
 
+        def save():
+            if name.get() and initiative.get() >= 0 and advantage_max.get() >= 0:
+                self.__accept_dialog(
+                    (self.data[0], name.get(), initiative.get(), advantage_max.get())
+                )
+
         name = tk.StringVar(value=self.data[1])
         initiative = tk.IntVar(value=self.data[2])
         advantage_max = tk.IntVar(value=self.data[3])
@@ -367,26 +378,115 @@ class TM_dialog(tk.Toplevel):
         tk.Entry(self, textvariable=initiative).place(x = 100, y = 40)
         tk.Label(self, text = "Max advantage").place(x = 10, y = 70)
         tk.Entry(self, textvariable=advantage_max).place(x = 100, y = 70)
-        tk.Button(self, text = "Save", command=lambda: self.__accept_dialog(
-            (self.data[0], name.get(), initiative.get(), advantage_max.get())
-        )).place(x = 60, y = 100)
+        tk.Button(self, text = "Save", command=save).place(x = 60, y = 100)
         tk.Button(self, text = "Cancel", command=self.__reject_dialog).place(x = 120, y = 100)
 
     def __effect_dialog(self):
         #params: id, index, name, r, s, eff, mode, text
-        pass
+        if isinstance(self.data, int):
+            self.is_new = True
+            self.data = (self.data, -1, "", 0, 0, "", TM_remove_mode.get_default(), "")
+        else:
+            self.data = (self.data[0], self.data[1], self.data[2], self.data[3], self.data[4],
+                         self.data[5], TM_remove_mode.get_options()[self.data[6].value], self.data[7])
+
+
+        def block_entries(event=None):
+            if TM_remove_mode.needs_rounds(mode.get()):
+                rounds_entry.config(state=tk.NORMAL)
+            else: 
+                rounds_entry.config(state=tk.DISABLED)
+            
+            if TM_remove_mode.needs_stacks(mode.get()):
+                stacks_entry.config(state=tk.NORMAL)
+            else: 
+                stacks_entry.config(state=tk.DISABLED)
+
+            if TM_remove_mode.needs_dialog(mode.get()):
+                dialog_entry.config(state=tk.NORMAL)
+            else: 
+                dialog_entry.config(state=tk.DISABLED)
+
+        def save():
+            if name.get() and mode.get() and effects.get():
+                if (not TM_remove_mode.needs_rounds(mode.get()) or rounds.get() > 0) and \
+                   (not TM_remove_mode.needs_stacks(mode.get()) or stacks.get() > 0) and \
+                   (not TM_remove_mode.needs_dialog(mode.get()) or dialog_text.get()):
+                    if not TM_remove_mode.needs_rounds(mode.get()):
+                        rounds.set(-1)
+                    if not TM_remove_mode.needs_stacks(mode.get()):
+                        stacks.set(-1)
+                    if not TM_remove_mode.needs_dialog(mode.get()):
+                        dialog_text.set("")
+                    self.__accept_dialog((
+                        self.data[0], self.data[1], name.get(), rounds.get(), stacks.get(),
+                        effects.get(), TM_remove_mode.parse(mode.get()), dialog_text.get() 
+                    ))
+
+        name = tk.StringVar(value=self.data[2])
+        mode = tk.StringVar(value=self.data[6])
+        rounds = tk.IntVar(value=self.data[3])
+        stacks = tk.IntVar(value=self.data[4])
+        effects = tk.StringVar(value=self.data[5])
+        dialog_text = tk.StringVar(value=self.data[7])
+
+        self.geometry("450x230")
+        rounds_entry = tk.Entry(self, textvariable=rounds, width=ROUNDS_STATS_DELTA_ENTRY_WIDTH)
+        stacks_entry = tk.Entry(self, textvariable=stacks, width=ROUNDS_STATS_DELTA_ENTRY_WIDTH)
+        dialog_entry = tk.Entry(self, textvariable=dialog_text, width=EFFECT_DESCRIPTION_WIDTH)
+        block_entries()
+
+        tk.Label(self, text = "Name").place(x = 10, y = 10)
+        tk.Entry(self, textvariable=name).place(x = 100, y = 10)    
+        tk.Label(self, text = "Mode").place(x = 10, y = 40)
+        tk.OptionMenu(self, mode, *(TM_remove_mode.get_options()), command=block_entries).place(x = 100, y = 35)
+        tk.Label(self, text = "Rounds").place(x = 10, y = 70)
+        rounds_entry.place(x = 60, y = 70)
+        tk.Label(self, text = "Stacks").place(x = 100, y = 70)
+        stacks_entry.place(x = 150, y = 70)
+        tk.Label(self, text = "Effect").place(x = 10, y = 100)
+        tk.Entry(self, textvariable=effects, width=EFFECT_DESCRIPTION_WIDTH).place(x = 100, y = 100)
+        tk.Label(self, text = "Dialog text").place(x = 10, y = 130)
+        dialog_entry.place(x = 100, y = 130)
+        tk.Label(self, 
+            text = "Hint: to instert current rounds/stack number in effect or dialog use character " + 
+            TM_effect.DESCRIPTION_REPLACE_WITH_ROUNDS_SIGN + '/' + TM_effect.DESCRIPTION_REPLACE_WITH_STACK_SIGN
+        ).place(x = 10, y = 160)
+        tk.Button(self, text = "Save", command=save).place(x = 250, y = 190)
+        tk.Button(self, text = "Cancel", command=self.__reject_dialog).place(x = 300, y = 190)
 
     def __stack_dialog(self):
         #params: id, index, mode, text->returned
-        pass   
+        delta = tk.IntVar(value = 0)
+
+        def save():
+            self.__accept_dialog((self.data[0], self.data[1], self.data[2], delta.get()))
+
+        self.geometry("220x180")
+        tk.Label(self, text=self.data[3], wraplength=TEXT_LINE_WIDTH, justify=tk.LEFT).place(x = 5, y = 5)
+        tk.Label(self, text = "Change stacks value by:").place(x=10, y=100)
+        tk.Label(self, text = "(\"-1\" means remove 1 stack)").place(x=10, y=120)
+        tk.Entry(self, textvariable=delta, width=ROUNDS_STATS_DELTA_ENTRY_WIDTH).place(x=150, y = 100)
+        tk.Button(self, text = "Save", command=save).place(x = 90, y = 140)
         
     def __end_test_dialog(self):
         #params: id, index, mode, text->returned
-        pass
+
+        def lose():
+            self.__accept_dialog((self.data[0], self.data[1], self.data[2], False))
+
+        self.geometry("220x130")
+        tk.Label(self, text=self.data[3], wraplength=TEXT_LINE_WIDTH, justify=tk.LEFT).place(x = 5, y = 5)
+        tk.Button(self, text = "Keep", command=self.__reject_dialog).place(x = 100, y = 100)
+        tk.Button(self, text = "Lose", command=lose).place(x = 150, y = 100)
 
     def __end_message_dialog(self):
         #params: id, index, mode, text->returned
-        pass   
+
+        self.geometry("220x130")
+        tk.Label(self, text=self.data[3], wraplength=TEXT_LINE_WIDTH, justify=tk.LEFT).place(x = 5, y = 5)
+        tk.Button(self, text = "Close", command=self.__reject_dialog).place(x = 150, y = 100)
+
 
     #result
     def __accept_dialog(self, new_data):
