@@ -243,8 +243,8 @@ class TM_remove_mode(Enum):
     def parse(option):
         if option not in TM_remove_mode.get_options():
             return None
-        elif TM_remove_mode.get_options().index(option) == TM_remove_mode.ROUND_END_TEST_STACK.value:
-            return TM_remove_mode.ROUND_END_TEST_STACK
+        elif TM_remove_mode.get_options().index(option) == TM_remove_mode.ROUND_END_COUNT_BUT_TEST.value:
+            return TM_remove_mode.ROUND_END_COUNT_BUT_TEST
         elif TM_remove_mode.get_options().index(option) == TM_remove_mode.ROUND_END_COUNT.value:
             return TM_remove_mode.ROUND_END_COUNT
         elif TM_remove_mode.get_options().index(option) == TM_remove_mode.TURN_CAN_TEST_STACK.value:

@@ -279,7 +279,7 @@ class TM_object_Frame(tk.Frame):
         self.master._open_dialog(Dialog_type.DIALOG_OBJECT,  (self._id, self.__name.get(), self.__initiative.get(), self.__advantage_max))
 
     def __remove(self):
-        if messagebox.askokcancel("delete", "Are you sure to delete it?", icon='warning'):
+        if messagebox.askokcancel("delete", "Are you sure to delete it?", icon='warning', parent=self.master):
             self.master._read_to_list(self.__data.remove_object(self._id))
             self._hide()
 
@@ -295,7 +295,7 @@ class TM_object_Frame(tk.Frame):
 
     def __remove_effect(self):
         if self.__effects_list.curselection():
-            if messagebox.askokcancel("delete", "Are you sure to delete it?", icon='warning'):
+            if messagebox.askokcancel("delete", "Are you sure to delete it?", icon='warning', parent=self.master):
                 index = self.__effects_list.curselection()[0]
                 self.__effects_list.delete(index)
                 self.__data.remove_effect(self._id, index)          
@@ -340,7 +340,7 @@ class TM_object_Frame(tk.Frame):
 class TM_dialog(tk.Toplevel):
     def __init__(self, master, dialog_type, params):
         super().__init__(master=master)
-        self.title("Effect")
+        
 
         self.data = params
         self.is_new = params == None
@@ -360,6 +360,7 @@ class TM_dialog(tk.Toplevel):
 
     #build
     def __object_dialog(self):
+        self.title("Object")
         #params: id, name, ini, adv_max
         if not self.data:
             self.data = (-1, "", 0, 0)
@@ -385,6 +386,7 @@ class TM_dialog(tk.Toplevel):
         tk.Button(self, text = "Cancel", command=self.__reject_dialog).place(x = 120, y = 100)
 
     def __effect_dialog(self):
+        self.title("Effect")
         #params: id, index, name, r, s, eff, mode, text
         if isinstance(self.data, int):
             self.is_new = True
@@ -459,6 +461,7 @@ class TM_dialog(tk.Toplevel):
         tk.Button(self, text = "Cancel", command=self.__reject_dialog).place(x = 300, y = 190)
 
     def __stack_dialog(self):
+        self.title("Effect")
         #params: id, index, mode, text->returned
         delta = tk.IntVar(value = 0)
 
@@ -473,6 +476,7 @@ class TM_dialog(tk.Toplevel):
         tk.Button(self, text = "Save", command=save).place(x = 90, y = 140)
         
     def __end_test_dialog(self):
+        self.title("Effect")
         #params: id, index, mode, text->returned
 
         def lose():
@@ -484,6 +488,7 @@ class TM_dialog(tk.Toplevel):
         tk.Button(self, text = "Lose", command=lose).place(x = 150, y = 100)
 
     def __end_message_dialog(self):
+        self.title("Effect")
         #params: id, index, mode, text->returned
 
         self.geometry("220x130")

@@ -122,7 +122,7 @@ class Note_window(tk.Tk):
 
   def __open_file(self):
     if self.working_directory:
-      path = filedialog.askopenfilename(filetypes=[("Text file", ".txt"), ("RPG file", ".rpg")], title='Open files')
+      path = filedialog.askopenfilename(filetypes=[("RPG file", ".rpg"), ("Text file", ".txt")], title='Open files')
       if path and path.startswith(self.working_directory):
         self.__read_file(path)
       
