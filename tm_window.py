@@ -18,6 +18,7 @@ ROUNDS_STATS_DELTA_ENTRY_WIDTH = 5
 class TM_window(tk.Toplevel):
     def __init__(self, master):
         super().__init__(master=master)
+        self.title("Turn Controller")
         
         self.__data = TM_data()
         
@@ -339,6 +340,8 @@ class TM_object_Frame(tk.Frame):
 class TM_dialog(tk.Toplevel):
     def __init__(self, master, dialog_type, params):
         super().__init__(master=master)
+        self.title("Effect")
+
         self.data = params
         self.is_new = params == None
         self.canceled = True

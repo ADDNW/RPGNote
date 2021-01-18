@@ -8,6 +8,7 @@ from tm_window import TM_window
 class Note_window(tk.Tk):
   def __init__(self):
     super().__init__()
+    self.title("RPGNote")
     
     #mode
     self.write_mode = False
@@ -30,6 +31,7 @@ class Note_window(tk.Tk):
     self.tm_window = None
 
     self.__create_GUI()
+    self.__read_working_directory()
   
   #init
   def __create_GUI(self):
@@ -100,7 +102,7 @@ class Note_window(tk.Tk):
 
   #file working
   def __read_working_directory(self):
-    path = filedialog.askdirectory()
+    path = filedialog.askdirectory(title='Choose working directory')
     if path:
       self.working_directory = path
       if not self.write_mode:
@@ -112,7 +114,7 @@ class Note_window(tk.Tk):
 
   def __mark_files(self):
     if self.working_directory:
-      for file in filedialog.askopenfilenames():
+      for file in filedialog.askopenfilenames(title='Mark files'):
         if file.startswith(self.working_directory):
           if file not in self.marked_files:
             self.marked_files.append(file)
@@ -120,7 +122,7 @@ class Note_window(tk.Tk):
 
   def __open_file(self):
     if self.working_directory:
-      path = filedialog.askopenfilename(filetypes=[("Text file", ".txt"), ("RPG file", ".rpg")])
+      path = filedialog.askopenfilename(filetypes=[("Text file", ".txt"), ("RPG file", ".rpg")], title='Open files')
       if path and path.startswith(self.working_directory):
         self.__read_file(path)
       
